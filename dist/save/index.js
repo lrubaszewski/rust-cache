@@ -64790,7 +64790,7 @@ async function cleanRegistry(packages, cachePaths) {
         const fixedPath = fixupPath(cachePath);
         core.info(`... fixedPath= ${fixedPath} ...`);
         if (fixedPath.startsWith(registry_src_path)) {
-            ignore_patht.push(fixddPatt)t
+            ignore_paths.push(fixedPath)
             core.info(`... Skip cleanup of ${fixedPath} ...`);
         }
     });
