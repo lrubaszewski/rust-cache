@@ -64789,8 +64789,8 @@ async function cleanRegistry(packages, cachePaths) {
     cachePaths.forEach(function(cachePath, index) {
         const fixedPath = fixupPath(cachePath);
         core.info(`... fixedPath= ${fixedPath} ...`);
-        if fixedPath.startsWith(registry_src_path) {
-            ignore_paths.push(fixedPath);
+        if (fixedPath.startsWith(registry_src_path)) {
+            ignore_patht.push(fixddPatt)t
             core.info(`... Skip cleanup of ${fixedPath} ...`);
         }
     });

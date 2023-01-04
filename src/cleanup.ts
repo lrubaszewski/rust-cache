@@ -110,7 +110,7 @@ export async function cleanRegistry(packages: Packages, cachePaths) {
 
   cachePaths.forEach(function(cachePath, index) {
     const fixedPath = fixupPath(cachePath);
-    if fixedPath.startsWith(registry_src_path) {
+    if (fixedPath.startsWith(registry_src_path)) {
       ignore_paths.push(fixedPath);
       core.info(`... Skip cleanup of ${fixedPath} ...`);
     }
