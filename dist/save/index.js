@@ -64764,7 +64764,7 @@ async function cleanBin() {
 }
 
 function fixupPath(somePath) {
-    return somePath.replace('~', os.homedir()).replace("/", path.sep);
+    return somePath.replace('~', os.homedir()).replace("/", (external_path_default()).sep);
 }
 
 function globCleanupFiles(pattern, ignorePaths) {
@@ -64781,7 +64781,7 @@ async function cleanRegistry(packages, cachePaths) {
     // we can remove this completely, as cargo will recreate this from `cache`
     //await rmRF(path.join(CARGO_HOME, "registry", "src"));
 
-    const registry_src_path = path.join(CARGO_HOME, "registry", "src");
+    const registry_src_path = external_path_default().join(CARGO_HOME, "registry", "src");
     const ignore_paths = [];
 
     core.info(`... Cleanup ${registry_src_path} ...`);
@@ -64795,7 +64795,7 @@ async function cleanRegistry(packages, cachePaths) {
         }
     });
 
-    const dirs = globCleanupFiles(path.join(registry_src_path, "*", "*"), ignore_paths);
+    const dirs = globCleanupFiles(external_path_default().join(registry_src_path, "*", "*"), ignore_paths);
     for await (const dir of dirs) {
         core.info("... removing ${dir} ...");
         await rmRF(dir);
