@@ -46,7 +46,7 @@ async function run() {
 
     try {
       core.info(`... Cleaning cargo registry ...`);
-      await cleanRegistry(allPackages);
+      await cleanRegistry(allPackages, config.cachePaths);
     } catch (e) {
       core.info(`[warning] ${(e as any).stack}`);
     }

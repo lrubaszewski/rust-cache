@@ -1,7 +1,10 @@
 import * as core from "@actions/core";
 import * as io from "@actions/io";
+//import * as glob from "@actions/glob";
 import fs from "fs";
 import path from "path";
+import os from "os";
+import glob from "glob";
 
 import { CARGO_HOME, STATE_BINS } from "./config";
 import { Packages } from "./workspace";
@@ -85,10 +88,44 @@ export async function cleanBin() {
   }
 }
 
-export async function cleanRegistry(packages: Packages) {
-  // `.cargo/registry/src`
-  // we can remove this completely, as cargo will recreate this from `cache`
-  await rmRF(path.join(CARGO_HOME, "registry", "src"));
+function fixupPath(somePath: string) {
+  return somePath.replace('~', os.homedir()).replace("/", path.sep);
+}
+
+function globCleanupFiles(pattern: string, ignorePaths: string[]): string[] {
+  return glob.sync(pattern, {
+    ignore: ignorePaths
+  });
+}
+
+export async function cleanRegistry(packages: Packages, cachePaths: string[]) {
+  // `.cargo/registry/src
+
+  // Originally whole registry/src was removed, but some crates (eg. librocksdb-sys) might need src as well.
+  // (see: https://github.com/bmwill/sui/commit/4735504695dfb7b5ec13902a99bedd59f405c614).
+  // Therefore a workaround has been added to allow ignoring cleanup of specified paths.
+  // If some path from 'cache-directories' belongs to `.cargo/registry/src/*/*` then it is not removed.
+  // eg.
+  //  cache-directories: ~/.cargo/registry/src/**/librocksdb-sys-*
+  //
+  // As in example above simple globbing is allowed.
+  const registry_src_path = path.join(CARGO_HOME, "registry", "src");
+  const ignore_paths: Array<string> = [];
+
+  core.info(`... Cleanup ${registry_src_path} ...`);
+
+  for await (const cachePath of cachePaths) {
+    const fixedPath = fixupPath(cachePath);
+    if (fixedPath.startsWith(registry_src_path)) {
+      ignore_paths.push(fixedPath);
+      core.info(`... Skip cleanup of ${fixedPath} ...`);
+    }
+  }
+  // get folders in `.cargo/registry/src/*/*` (two levels below `src`) and exclude folders specified to ignore.
+  const dirs = await globCleanupFiles(path.join(registry_src_path, "*", "*"), ignore_paths);
+  for await (const dir of dirs) {
+    await rmRF(dir);
+  }
 
   // `.cargo/registry/index`
   const indexDir = await fs.promises.opendir(path.join(CARGO_HOME, "registry", "index"));
@@ -181,10 +218,10 @@ const ONE_WEEK = 7 * 24 * 3600 * 1000;
 
 /**
  * Removes all files or directories in `dirName` matching some criteria.
- * 
+ *
  * When the `checkTimestamp` flag is set, this will also remove anything older
  * than one week.
- * 
+ *
  * Otherwise, it will remove everything that does not match any string in the
  * `keepPrefix` set.
  * The matching strips and trailing `-$hash` suffix.
