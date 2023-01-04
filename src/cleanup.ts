@@ -89,7 +89,8 @@ export async function cleanRegistry(packages: Packages) {
   // `.cargo/registry/src`
   // we can remove this completely, as cargo will recreate this from `cache`
   //await rmRF(path.join(CARGO_HOME, "registry", "src"));
-  core.info(`... Skipping ${path.join(CARGO_HOME, "registry", "src")} ...`);
+  const registry_src_path = path.join(CARGO_HOME, "registry", "src");
+  core.info(`... Skipping ${registry_src_path} cleanup ...`);
 
   // `.cargo/registry/index`
   const indexDir = await fs.promises.opendir(path.join(CARGO_HOME, "registry", "index"));
