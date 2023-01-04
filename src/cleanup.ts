@@ -1,7 +1,10 @@
 import * as core from "@actions/core";
 import * as io from "@actions/io";
+//import * as glob from "@actions/glob";
 import fs from "fs";
 import path from "path";
+import os from "os";
+import glob from "glob";
 
 import { CARGO_HOME, STATE_BINS } from "./config";
 import { Packages } from "./workspace";
@@ -85,38 +88,35 @@ export async function cleanBin() {
   }
 }
 
-function fixupPath(somePath) {
+function fixupPath(somePath: string) {
   return somePath.replace('~', os.homedir()).replace("/", path.sep);
 }
 
-function globCleanupFiles(pattern, ignorePaths) {
-  const files = glob.sync(
-    pattern, {
-      ignore: ignorePaths
-    }
-  );
-  return files;
+function globCleanupFiles(pattern: string, ignorePaths: string[]): string[] {
+  return glob.sync(pattern, {
+    ignore: ignorePaths
+  });
 }
 
-export async function cleanRegistry(packages: Packages, cachePaths) {
+export async function cleanRegistry(packages: Packages, cachePaths: string[]) {
   // `.cargo/registry/src`
   // we can remove this completely, as cargo will recreate this from `cache`
   //await rmRF(path.join(CARGO_HOME, "registry", "src"));
 
   const registry_src_path = path.join(CARGO_HOME, "registry", "src");
-  const ignore_paths = [];
+  const ignore_paths: Array<string> = [];
 
   core.info(`... Cleanup ${registry_src_path} ...`);
 
-  cachePaths.forEach(function(cachePath, index) {
+  for await (const cachePath of cachePaths) {
     const fixedPath = fixupPath(cachePath);
     if (fixedPath.startsWith(registry_src_path)) {
       ignore_paths.push(fixedPath);
       core.info(`... Skip cleanup of ${fixedPath} ...`);
     }
-  });
+  }
 
-  const dirs = globCleanupFiles(path.join(registry_src_path, "*", "*"), ignore_paths);
+  const dirs = await globCleanupFiles(path.join(registry_src_path, "*", "*"), ignore_paths);
   for await (const dir of dirs) {
     core.info("... removing ${dir} ...");
     await rmRF(dir);
