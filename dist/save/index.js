@@ -64762,12 +64762,45 @@ async function cleanBin() {
         }
     }
 }
-async function cleanRegistry(packages) {
+
+function fixupPath(somePath) {
+    return somePath.replace('~', os.homedir()).replace("/", path.sep);
+}
+
+function globCleanupFiles(pattern, ignorePaths) {
+    const files = glob.sync(
+        pattern, {
+            ignore: ignorePaths
+        }
+    );
+    return files;
+}
+
+async function cleanRegistry(packages, cachePaths) {
     // `.cargo/registry/src`
     // we can remove this completely, as cargo will recreate this from `cache`
     //await rmRF(path.join(CARGO_HOME, "registry", "src"));
+
     const registry_src_path = path.join(CARGO_HOME, "registry", "src");
-    core.info(`... Skipping ${registry_src_path} cleanup ...`);
+    const ignore_paths = [];
+
+    core.info(`... Cleanup ${registry_src_path} ...`);
+
+    cachePaths.forEach(function(cachePath, index) {
+        const fixedPath = fixupPath(cachePath);
+        core.info(`... fixedPath= ${fixedPath} ...`);
+        if fixedPath.startsWith(registry_src_path) {
+            ignore_paths.push(fixedPath);
+            core.info(`... Skip cleanup of ${fixedPath} ...`);
+        }
+    });
+
+    const dirs = globCleanupFiles(registry_src_path, ignore_paths);
+    dirs.forEach(function(dir, index) {
+        core.info("... removing ${dir} ...");
+        await rmRF(dir));
+    };
+
     // `.cargo/registry/index`
     const indexDir = await external_fs_default().promises.opendir(external_path_default().join(CARGO_HOME, "registry", "index"));
     for await (const dirent of indexDir) {
@@ -64952,7 +64985,7 @@ async function run() {
         }
         try {
             core.info(`... Cleaning cargo registry ...`);
-            await cleanRegistry(allPackages);
+            await cleanRegistry(allPackages, config.cachePaths);
         }
         catch (e) {
             core.info(`[warning] ${e.stack}`);
