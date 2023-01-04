@@ -64796,10 +64796,10 @@ async function cleanRegistry(packages, cachePaths) {
     });
 
     const dirs = globCleanupFiles(path.join(registry_src_path, "*", "*"), ignore_paths);
-    dirs.forEach(function(dir, index) {
+    for await (const dir of dirs) {
         core.info("... removing ${dir} ...");
-        await rmRF(dir));
-    };
+        await rmRF(dir);
+    }
 
     // `.cargo/registry/index`
     const indexDir = await external_fs_default().promises.opendir(external_path_default().join(CARGO_HOME, "registry", "index"));
