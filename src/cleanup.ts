@@ -116,7 +116,7 @@ export async function cleanRegistry(packages: Packages, cachePaths) {
     }
   });
 
-  const dirs = globCleanupFiles(registry_src_path, ignore_paths);
+  const dirs = globCleanupFiles(path.join(registry_src_path, "*", "*"), ignore_paths);
   dirs.forEach(function(dir, index) {
     core.info("... removing ${dir} ...");
     await rmRF(dir));
