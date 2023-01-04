@@ -88,7 +88,8 @@ export async function cleanBin() {
 export async function cleanRegistry(packages: Packages) {
   // `.cargo/registry/src`
   // we can remove this completely, as cargo will recreate this from `cache`
-  await rmRF(path.join(CARGO_HOME, "registry", "src"));
+  //await rmRF(path.join(CARGO_HOME, "registry", "src"));
+  core.info(`... Skipping ${path.join(CARGO_HOME, "registry", "src")} ...`);
 
   // `.cargo/registry/index`
   const indexDir = await fs.promises.opendir(path.join(CARGO_HOME, "registry", "index"));
@@ -181,10 +182,10 @@ const ONE_WEEK = 7 * 24 * 3600 * 1000;
 
 /**
  * Removes all files or directories in `dirName` matching some criteria.
- * 
+ *
  * When the `checkTimestamp` flag is set, this will also remove anything older
  * than one week.
- * 
+ *
  * Otherwise, it will remove everything that does not match any string in the
  * `keepPrefix` set.
  * The matching strips and trailing `-$hash` suffix.
