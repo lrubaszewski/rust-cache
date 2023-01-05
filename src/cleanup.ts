@@ -88,9 +88,22 @@ export async function cleanBin() {
 }
 
 function globCleanupFiles(pattern: string, ignorePaths: string[]): string[] {
-  return glob.sync(pattern, {
+  core.debug(`globCleanupFiles pattern: ${pattern} ignorePaths ${ignorePaths}`);
+
+  // glob works only with slashes. Convert path separator from OS-native to "/"
+  pattern = pattern.replaceAll(path.sep, "/");
+  for  (var i = 0; i < ignorePaths.length; i++) {
+    ignorePaths[i] = ignorePaths[i].replaceAll(path.sep, "/");
+  }
+  const list: Array<string> = glob.sync(pattern, {
     ignore: ignorePaths
   });
+
+  // Convert path separator back to OS-native format
+  for  (var i = 0; i < list.length; i++) {
+    list[i] = list[i].replaceAll("/", path.sep);
+  }
+  return list;
 }
 
 export async function cleanRegistry(packages: Packages, cachePaths: string[]) {

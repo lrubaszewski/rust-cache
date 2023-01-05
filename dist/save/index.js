@@ -68023,9 +68023,20 @@ async function cleanBin() {
     }
 }
 function globCleanupFiles(pattern, ignorePaths) {
-    return glob_default().sync(pattern, {
+    core.debug(`globCleanupFiles pattern: ${pattern} ignorePaths ${ignorePaths}`);
+    // glob works only with slashes. Convert path separator from OS-native to "/"
+    pattern = pattern.replaceAll((external_path_default()).sep, "/");
+    for (var i = 0; i < ignorePaths.length; i++) {
+        ignorePaths[i] = ignorePaths[i].replaceAll((external_path_default()).sep, "/");
+    }
+    const list = glob_default().sync(pattern, {
         ignore: ignorePaths
     });
+    // Convert path separator back to OS-native format
+    for (var i = 0; i < list.length; i++) {
+        list[i] = list[i].replaceAll("/", (external_path_default()).sep);
+    }
+    return list;
 }
 async function cleanRegistry(packages, cachePaths) {
     // `.cargo/registry/src
@@ -68226,7 +68237,7 @@ async function run() {
             core.info(`Cache up-to-date.`);
             return;
         }
-        // normalize paths according to OS
+        // Normalize paths according to OS
         for await (const cachePath of config.cachePaths) {
             fixedCachePaths.push(fixupPath(cachePath));
         }
@@ -68267,7 +68278,8 @@ async function run() {
         }
         // First item of fixedCachePaths is CARGO_HOME
         // If some of successive items is within CARGO_HOME, then it will be cached along with CARGO_HOME.
-        // If we leave it then it will added for the second time to the cache archive (increasing its size).
+        // If we leave it then it will be added for the second time to the cache archive (increasing its size).
+        // Therefore remove such paths.
         for (var i = 1; i < fixedCachePaths.length; i++) {
             if (fixedCachePaths[i].startsWith(fixedCachePaths[0])) {
                 fixedCachePaths.splice(i, 1);

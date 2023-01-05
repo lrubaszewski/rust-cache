@@ -37,7 +37,7 @@ async function run() {
       return;
     }
 
-    // normalize paths according to OS
+    // Normalize paths according to OS
     for await (const cachePath of config.cachePaths) {
       fixedCachePaths.push(fixupPath(cachePath));
     }
@@ -80,7 +80,8 @@ async function run() {
 
     // First item of fixedCachePaths is CARGO_HOME
     // If some of successive items is within CARGO_HOME, then it will be cached along with CARGO_HOME.
-    // If we leave it then it will added for the second time to the cache archive (increasing its size).
+    // If we leave it then it will be added for the second time to the cache archive (increasing its size).
+    // Therefore remove such paths.
     for  (var i = 1; i < fixedCachePaths.length; i++) {
         if (fixedCachePaths[i].startsWith(fixedCachePaths[0])) {
             fixedCachePaths.splice(i,1);
