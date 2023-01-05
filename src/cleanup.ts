@@ -3,7 +3,6 @@ import * as io from "@actions/io";
 //import * as glob from "@actions/glob";
 import fs from "fs";
 import path from "path";
-import os from "os";
 import glob from "glob";
 
 import { CARGO_HOME, STATE_BINS } from "./config";
@@ -88,10 +87,6 @@ export async function cleanBin() {
   }
 }
 
-function fixupPath(somePath: string) {
-  return somePath.replace('~', os.homedir()).replace("/", path.sep);
-}
-
 function globCleanupFiles(pattern: string, ignorePaths: string[]): string[] {
   return glob.sync(pattern, {
     ignore: ignorePaths
@@ -115,10 +110,12 @@ export async function cleanRegistry(packages: Packages, cachePaths: string[]) {
   core.info(`... Cleanup ${registry_src_path} ...`);
 
   for await (const cachePath of cachePaths) {
-    const fixedPath = fixupPath(cachePath);
-    if (fixedPath.startsWith(registry_src_path)) {
-      ignore_paths.push(fixedPath);
-      core.info(`... Skip cleanup of ${fixedPath} ...`);
+
+    core.debug(`checking cachePath ${cachePath}`);
+
+    if (cachePath.startsWith(registry_src_path)) {
+      ignore_paths.push(cachePath);
+      core.info(`... Skip cleanup of ${cachePath} ...`);
     }
   }
   // get folders in `.cargo/registry/src/*/*` (two levels below `src`) and exclude folders specified to ignore.

@@ -67692,9 +67692,6 @@ var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
 // EXTERNAL MODULE: external "path"
 var external_path_ = __nccwpck_require__(1017);
 var external_path_default = /*#__PURE__*/__nccwpck_require__.n(external_path_);
-// EXTERNAL MODULE: external "os"
-var external_os_ = __nccwpck_require__(2037);
-var external_os_default = /*#__PURE__*/__nccwpck_require__.n(external_os_);
 // EXTERNAL MODULE: ./node_modules/glob/glob.js
 var glob = __nccwpck_require__(1957);
 var glob_default = /*#__PURE__*/__nccwpck_require__.n(glob);
@@ -67703,6 +67700,9 @@ var lib_glob = __nccwpck_require__(8090);
 // EXTERNAL MODULE: external "crypto"
 var external_crypto_ = __nccwpck_require__(6113);
 var external_crypto_default = /*#__PURE__*/__nccwpck_require__.n(external_crypto_);
+// EXTERNAL MODULE: external "os"
+var external_os_ = __nccwpck_require__(2037);
+var external_os_default = /*#__PURE__*/__nccwpck_require__.n(external_os_);
 ;// CONCATENATED MODULE: ./src/utils.ts
 
 
@@ -67955,7 +67955,6 @@ async function globFiles(pattern) {
 
 
 
-
 async function cleanTargetDir(targetDir, packages, checkTimestamp = false) {
     core.debug(`cleaning target directory "${targetDir}"`);
     // remove all *files* from the profile directory
@@ -68023,9 +68022,6 @@ async function cleanBin() {
         }
     }
 }
-function fixupPath(somePath) {
-    return somePath.replace('~', external_os_default().homedir()).replace("/", (external_path_default()).sep);
-}
 function globCleanupFiles(pattern, ignorePaths) {
     return glob_default().sync(pattern, {
         ignore: ignorePaths
@@ -68045,10 +68041,10 @@ async function cleanRegistry(packages, cachePaths) {
     const ignore_paths = [];
     core.info(`... Cleanup ${registry_src_path} ...`);
     for await (const cachePath of cachePaths) {
-        const fixedPath = fixupPath(cachePath);
-        if (fixedPath.startsWith(registry_src_path)) {
-            ignore_paths.push(fixedPath);
-            core.info(`... Skip cleanup of ${fixedPath} ...`);
+        core.debug(`checking cachePath ${cachePath}`);
+        if (cachePath.startsWith(registry_src_path)) {
+            ignore_paths.push(cachePath);
+            core.info(`... Skip cleanup of ${cachePath} ...`);
         }
     }
     // get folders in `.cargo/registry/src/*/*` (two levels below `src`) and exclude folders specified to ignore.
@@ -68205,14 +68201,20 @@ async function exists(path) {
 
 
 
+
+
 process.on("uncaughtException", (e) => {
     core.info(`[warning] ${e.message}`);
     if (e.stack) {
         core.info(e.stack);
     }
 });
+function fixupPath(somePath) {
+    return somePath.replace('~', external_os_default().homedir()).replaceAll("/", (external_path_default()).sep);
+}
 async function run() {
     const save = core.getInput("save-if").toLowerCase() || "true";
+    const fixedCachePaths = [];
     if (!(cache.isFeatureAvailable() && save === "true")) {
         return;
     }
@@ -68223,6 +68225,10 @@ async function run() {
         if (core.getState(STATE_KEY) === config.cacheKey) {
             core.info(`Cache up-to-date.`);
             return;
+        }
+        // normalize paths according to OS
+        for await (const cachePath of config.cachePaths) {
+            fixedCachePaths.push(fixupPath(cachePath));
         }
         // TODO: remove this once https://github.com/actions/toolkit/pull/553 lands
         await macOsWorkaround();
@@ -68240,7 +68246,7 @@ async function run() {
         }
         try {
             core.info(`... Cleaning cargo registry ...`);
-            await cleanRegistry(allPackages, config.cachePaths);
+            await cleanRegistry(allPackages, fixedCachePaths);
         }
         catch (e) {
             core.info(`[warning] ${e.stack}`);
@@ -68259,8 +68265,16 @@ async function run() {
         catch (e) {
             core.info(`[warning] ${e.stack}`);
         }
+        // First item of fixedCachePaths is CARGO_HOME
+        // If some of successive items is within CARGO_HOME, then it will be cached along with CARGO_HOME.
+        // If we leave it then it will added for the second time to the cache archive (increasing its size).
+        for (var i = 1; i < fixedCachePaths.length; i++) {
+            if (fixedCachePaths[i].startsWith(fixedCachePaths[0])) {
+                fixedCachePaths.splice(i, 1);
+            }
+        }
         core.info(`... Saving cache ...`);
-        await cache.saveCache(config.cachePaths, config.cacheKey);
+        await cache.saveCache(fixedCachePaths, config.cacheKey);
     }
     catch (e) {
         core.info(`[warning] ${e.stack}`);

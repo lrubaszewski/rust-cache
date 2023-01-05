@@ -67690,9 +67690,6 @@ var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
 // EXTERNAL MODULE: external "path"
 var external_path_ = __nccwpck_require__(1017);
 var external_path_default = /*#__PURE__*/__nccwpck_require__.n(external_path_);
-// EXTERNAL MODULE: external "os"
-var external_os_ = __nccwpck_require__(2037);
-var external_os_default = /*#__PURE__*/__nccwpck_require__.n(external_os_);
 // EXTERNAL MODULE: ./node_modules/glob/glob.js
 var glob_glob = __nccwpck_require__(1957);
 // EXTERNAL MODULE: ./node_modules/@actions/glob/lib/glob.js
@@ -67700,6 +67697,9 @@ var lib_glob = __nccwpck_require__(8090);
 // EXTERNAL MODULE: external "crypto"
 var external_crypto_ = __nccwpck_require__(6113);
 var external_crypto_default = /*#__PURE__*/__nccwpck_require__.n(external_crypto_);
+// EXTERNAL MODULE: external "os"
+var external_os_ = __nccwpck_require__(2037);
+var external_os_default = /*#__PURE__*/__nccwpck_require__.n(external_os_);
 // EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
 var exec = __nccwpck_require__(1514);
 ;// CONCATENATED MODULE: ./src/utils.ts
@@ -67954,7 +67954,6 @@ async function globFiles(pattern) {
 
 
 
-
 async function cleanTargetDir(targetDir, packages, checkTimestamp = false) {
     lib_core.debug(`cleaning target directory "${targetDir}"`);
     // remove all *files* from the profile directory
@@ -68022,9 +68021,6 @@ async function cleanBin() {
         }
     }
 }
-function fixupPath(somePath) {
-    return somePath.replace('~', os.homedir()).replace("/", path.sep);
-}
 function globCleanupFiles(pattern, ignorePaths) {
     return glob.sync(pattern, {
         ignore: ignorePaths
@@ -68044,10 +68040,10 @@ async function cleanRegistry(packages, cachePaths) {
     const ignore_paths = [];
     core.info(`... Cleanup ${registry_src_path} ...`);
     for await (const cachePath of cachePaths) {
-        const fixedPath = fixupPath(cachePath);
-        if (fixedPath.startsWith(registry_src_path)) {
-            ignore_paths.push(fixedPath);
-            core.info(`... Skip cleanup of ${fixedPath} ...`);
+        core.debug(`checking cachePath ${cachePath}`);
+        if (cachePath.startsWith(registry_src_path)) {
+            ignore_paths.push(cachePath);
+            core.info(`... Skip cleanup of ${cachePath} ...`);
         }
     }
     // get folders in `.cargo/registry/src/*/*` (two levels below `src`) and exclude folders specified to ignore.
