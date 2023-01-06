@@ -3,6 +3,8 @@ import * as core from "@actions/core";
 
 import { cleanTargetDir, getCargoBins } from "./cleanup";
 import { CacheConfig, STATE_BINS, STATE_KEY } from "./config";
+import os from "os";
+import path from "path";
 
 process.on("uncaughtException", (e) => {
   core.info(`[warning] ${e.message}`);
@@ -11,7 +13,13 @@ process.on("uncaughtException", (e) => {
   }
 });
 
+function fixupPath(somePath: string) {
+  return somePath.replace('~', os.homedir()).replaceAll("/", path.sep);
+}
+
 async function run() {
+  const fixedCachePaths: Array<string> = [];
+
   if (!cache.isFeatureAvailable()) {
     setCacheHitOutput(false);
     return;
@@ -32,9 +40,23 @@ async function run() {
     const bins = await getCargoBins();
     core.saveState(STATE_BINS, JSON.stringify([...bins]));
 
+    // Normalize paths according to OS
+    for await (const cachePath of config.cachePaths) {
+      fixedCachePaths.push(fixupPath(cachePath));
+    }
+    // First item of fixedCachePaths is CARGO_HOME
+    // If some of successive items is within CARGO_HOME, then it will be cached along with CARGO_HOME.
+    // If we leave it then it will be added for the second time to the cache archive (increasing its size).
+    // Therefore remove such paths.
+    for  (var i = 1; i < fixedCachePaths.length; i++) {
+        if (fixedCachePaths[i].startsWith(fixedCachePaths[0])) {
+            fixedCachePaths.splice(i,1);
+        }
+    }
+
     core.info(`... Restoring cache ...`);
     const key = config.cacheKey;
-    const restoreKey = await cache.restoreCache(config.cachePaths, key, [config.restoreKey]);
+    const restoreKey = await cache.restoreCache(fixedCachePaths, key, [config.restoreKey]);
     if (restoreKey) {
       core.info(`Restored from cache key "${restoreKey}".`);
       core.saveState(STATE_KEY, restoreKey);

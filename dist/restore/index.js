@@ -68210,13 +68210,19 @@ async function exists(path) {
 
 
 
+
+
 process.on("uncaughtException", (e) => {
     lib_core.info(`[warning] ${e.message}`);
     if (e.stack) {
         lib_core.info(e.stack);
     }
 });
+function fixupPath(somePath) {
+    return somePath.replace('~', external_os_default().homedir()).replaceAll("/", (external_path_default()).sep);
+}
 async function run() {
+    const fixedCachePaths = [];
     if (!cache.isFeatureAvailable()) {
         setCacheHitOutput(false);
         return;
@@ -68233,9 +68239,22 @@ async function run() {
         lib_core.info("");
         const bins = await getCargoBins();
         lib_core.saveState(config_STATE_BINS, JSON.stringify([...bins]));
+        // Normalize paths according to OS
+        for await (const cachePath of config.cachePaths) {
+            fixedCachePaths.push(fixupPath(cachePath));
+        }
+        // First item of fixedCachePaths is CARGO_HOME
+        // If some of successive items is within CARGO_HOME, then it will be cached along with CARGO_HOME.
+        // If we leave it then it will be added for the second time to the cache archive (increasing its size).
+        // Therefore remove such paths.
+        for (var i = 1; i < fixedCachePaths.length; i++) {
+            if (fixedCachePaths[i].startsWith(fixedCachePaths[0])) {
+                fixedCachePaths.splice(i, 1);
+            }
+        }
         lib_core.info(`... Restoring cache ...`);
         const key = config.cacheKey;
-        const restoreKey = await cache.restoreCache(config.cachePaths, key, [config.restoreKey]);
+        const restoreKey = await cache.restoreCache(fixedCachePaths, key, [config.restoreKey]);
         if (restoreKey) {
             lib_core.info(`Restored from cache key "${restoreKey}".`);
             lib_core.saveState(STATE_KEY, restoreKey);
